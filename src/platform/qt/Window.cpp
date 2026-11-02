@@ -728,7 +728,6 @@ void Window::setFrameSize(int scale) {
 	}
 	QSize size(contentSize(true));
 	size *= scale;
-	m_config->setOption("scaleMultiplier", scale); // TODO: Port to other
 	resizeFrame(size);
 	if (lockFrameSize) {
 		m_display->setMaximumScale(scale);
@@ -737,6 +736,10 @@ void Window::setFrameSize(int scale) {
 }
 
 void Window::recalculateFrameSize(const QSize& size) {
+	if (!m_wasOpened) {
+		return;
+	}
+
 	int factor = -1;
 	QSize baseSize(contentSize(true));
 	if (!baseSize.isEmpty() && size.width() % baseSize.width() == 0 && size.height() % baseSize.height() == 0 && size.width() / baseSize.width() == size.height() / baseSize.height()) {
@@ -744,6 +747,7 @@ void Window::recalculateFrameSize(const QSize& size) {
 	}
 
 	m_savedScale = factor;
+	m_config->setOption("scaleMultiplier", factor);
 	for (QMap<int, std::shared_ptr<Action>>::iterator iter = m_frameSizes.begin(); iter != m_frameSizes.end(); ++iter) {
 		std::shared_ptr<Action> frameSize = iter.value();
 		frameSize->setActive(iter.key() == factor);
@@ -1142,7 +1146,7 @@ void Window::reloadDisplayDriver() {
 	});
 
 	connect(m_display.get(), &QGBA::Display::contentSizeChanged, [this](const QSize& size) {
-		if (m_savedScale > 0 && !m_config->getOption("lockFrameSize").toInt()) {
+		if (m_savedScale > 0 && !size.isEmpty() && !m_config->getOption("lockFrameSize").toInt()) {
 			resizeFrame(size * m_savedScale);
 		}
 	});
